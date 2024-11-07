@@ -1,4 +1,4 @@
-package main
+package injector3
 
 import (
 	"fmt"
