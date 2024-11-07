@@ -21,20 +21,35 @@ func Register[T any](i *Injector, ctor func(*Injector) T) *Injector {
 	return i
 }
 
-func Resolve[T any](i *Injector) T {
-	var t0 [0]T
-	t := reflect.TypeOf(t0).Elem()
+func resolve(i *Injector, t reflect.Type) any {
 	ctor, ok := i.ctors[t]
-	if !ok {
-		panic(fmt.Sprintf("No such type registered %s", t))
+	if ok {
+		return ctor.(func(i *Injector) T)(i)
 	}
-	return ctor.(func(i *Injector) T)(i)
+
+	// if t is a struct, we need to resolve its fields and build the struct
+	if t.Kind() == reflect.Struct {
+		// create a new instance of the struct
+		v := reflect.New(t).Elem()
+		// get the number of fields in the struct
+		numFields := t.NumField()
+		for i := 0; i < numFields; i++ {
+			field := t.Field(i)
+			fieldType := field.Type
+			// resolve the field
+			fieldValue := resolve(i, fieldType)
+			// set the field value
+			v.Field(i).Set(reflect.ValueOf(fieldValue))
+		}
+		return v
+
+	}
+	return nil
 }
 
-//
-// type Constructor[T any] struct {
-// 	Fn func(*Injector) T
-// }
+func Resolve[T any](i *Injector) T {
+	return resolve(i, reflect.TypeOf([0]T{}).Elem()).(T)
+}
 
 func NewInjector() *Injector {
 	return &Injector{
