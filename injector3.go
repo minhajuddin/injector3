@@ -1,6 +1,7 @@
 package injector3
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 )
@@ -31,7 +32,22 @@ func resolve(injector *Injector, t reflect.Type) reflect.Value {
 		ctorFn := reflect.ValueOf(ctor)
 		return ctorFn.Call([]reflect.Value{reflect.ValueOf(injector)})[0]
 	}
-	panic("could not resolve inner type")
+
+	// if t is a struct, we need to resolve its fields and build the struct
+	if t.Kind() == reflect.Struct {
+		v := resolveStruct(injector, t)
+		return v
+	}
+
+	// if t is a pointer to a struct, we need to resolve its fields and build the struct
+	if t.Kind() == reflect.Pointer {
+		tt := t.Elem()
+		if tt.Kind() == reflect.Struct {
+			return resolveStruct(injector, tt).Addr()
+		}
+	}
+
+	panic(fmt.Sprintf("could not resolve inner type %s", t))
 }
 
 func resolveStruct(injector *Injector, t reflect.Type) reflect.Value {
@@ -75,7 +91,7 @@ func Resolve[T any](injector *Injector) T {
 	}
 
 	// NOTE: We don't handle other types in our injector
-	panic("could not resolve type")
+	panic(fmt.Sprintf("could not resolve type %s", t))
 }
 
 func NewInjector() *Injector {

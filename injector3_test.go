@@ -1,6 +1,7 @@
 package injector3_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/minhajuddin/injector3"
@@ -13,6 +14,29 @@ type (
 	HomeController       struct {
 		ReadReplica DBConnectionPool
 		Master      DBConnectionPool
+	}
+	AwesomeString string
+
+	A struct {
+		B *B
+	}
+	B struct {
+		C *C
+	}
+	C struct {
+		D D
+	}
+	D struct {
+		E E
+	}
+	E struct {
+		F F
+	}
+	F struct {
+		G *G
+	}
+	G struct {
+		Name AwesomeString
 	}
 )
 
@@ -35,6 +59,10 @@ func TestDefaultResolver(t *testing.T) {
 		return singleton
 	})
 
+	injector3.Register(i, func(i *injector3.Injector) AwesomeString {
+		return "awesome"
+	})
+
 	t.Run("Resolve a struct", func(t *testing.T) {
 		controller := injector3.Resolve[HomeController](i)
 		assert.Equal(t, singleton, controller.Master)
@@ -45,5 +73,11 @@ func TestDefaultResolver(t *testing.T) {
 		controller := injector3.Resolve[*HomeController](i)
 		assert.Equal(t, singleton, controller.Master)
 		assert.Equal(t, singleton, controller.ReadReplica)
+	})
+
+	t.Run("Deep nested struct", func(t *testing.T) {
+		a := injector3.Resolve[A](i)
+		fmt.Printf("%+v\n", a)
+		assert.Equal(t, AwesomeString("awesome"), a.B.C.D.E.F.G.Name)
 	})
 }
