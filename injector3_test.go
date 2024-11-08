@@ -1,7 +1,6 @@
 package injector3_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/minhajuddin/injector3"
@@ -77,7 +76,6 @@ func TestDefaultResolver(t *testing.T) {
 
 	t.Run("Deep nested struct", func(t *testing.T) {
 		a := injector3.Resolve[A](i)
-		fmt.Printf("%+v\n", a)
 		assert.Equal(t, AwesomeString("awesome"), a.B.C.D.E.F.G.Name)
 	})
 }
