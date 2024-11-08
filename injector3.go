@@ -30,6 +30,22 @@ func resolve(injector *Injector, t reflect.Type) reflect.Value {
 	panic("could not resolve inner type")
 }
 
+func resolveStruct(injector *Injector, t reflect.Type) reflect.Value {
+	// create a new instance of the struct
+	v := reflect.New(t).Elem()
+	// get the number of fields in the struct
+	numFields := t.NumField()
+	for i := 0; i < numFields; i++ {
+		field := t.Field(i)
+		fieldType := field.Type
+		// resolve the field
+		fieldValue := resolve(injector, fieldType)
+		// set the field value
+		v.Field(i).Set(fieldValue)
+	}
+	return v
+}
+
 func Resolve[T any](injector *Injector) T {
 	t := reflect.TypeOf([0]T{}).Elem()
 	ctor, ok := injector.ctors[t]
@@ -39,20 +55,18 @@ func Resolve[T any](injector *Injector) T {
 
 	// if t is a struct, we need to resolve its fields and build the struct
 	if t.Kind() == reflect.Struct {
-		// create a new instance of the struct
-		v := reflect.New(t).Elem()
-		// get the number of fields in the struct
-		numFields := t.NumField()
-		for i := 0; i < numFields; i++ {
-			field := t.Field(i)
-			fieldType := field.Type
-			// resolve the field
-			fieldValue := resolve(injector, fieldType)
-			// set the field value
-			v.Field(i).Set(fieldValue)
-		}
+		v := resolveStruct(injector, t)
 		return v.Interface().(T)
 	}
+
+	if t.Kind() == reflect.Pointer {
+		tt := t.Elem()
+		if tt.Kind() == reflect.Struct {
+			v := resolveStruct(injector, tt)
+			return v.Addr().Interface().(T)
+		}
+	}
+
 	panic("could not resolve type")
 }
 
