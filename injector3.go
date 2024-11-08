@@ -6,17 +6,57 @@ import (
 	"sync"
 )
 
+// Public APIs
+
+// Injector is a simple dependency injection container
 type Injector struct {
 	ctors map[reflect.Type]any
 	mu    sync.RWMutex
 }
 
+// NewInjector creates a new instance of the Injector
+func NewInjector() *Injector {
+	return &Injector{
+		ctors: make(map[reflect.Type]any),
+	}
+}
+
+// Register registers a constructor for a type
 func Register[T any](i *Injector, ctor func(*Injector) T) *Injector {
 	ctorType := reflect.TypeOf(ctor).Out(0)
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	i.ctors[ctorType] = ctor
 	return i
+}
+
+// Resolve resolves a type from the injector
+func Resolve[T any](injector *Injector) T {
+	t := reflect.TypeOf([0]T{}).Elem()
+	ctor, ok := getConstructor(injector, t)
+
+	// We have a constructor for the type, so this is a simple case
+	if ok {
+		return ctor.(func(i *Injector) T)(injector)
+	}
+
+	// if t is a struct, we need to resolve its fields and build the struct
+	if t.Kind() == reflect.Struct {
+		v := resolveStruct(injector, t)
+		return v.Interface().(T)
+	}
+
+	// if t is a pointer to a struct, we need to resolve its fields and build the struct
+	if t.Kind() == reflect.Pointer {
+		tt := t.Elem()
+		if tt.Kind() == reflect.Struct {
+			v := resolveStruct(injector, tt)
+			return v.Addr().Interface().(T)
+		}
+	}
+
+	// NOTE: We don't handle other types in our injector
+	panic(fmt.Sprintf("could not resolve type %s", t))
 }
 
 func getConstructor(i *Injector, t reflect.Type) (any, bool) {
@@ -64,38 +104,4 @@ func resolveStruct(injector *Injector, t reflect.Type) reflect.Value {
 		v.Field(i).Set(fieldValue)
 	}
 	return v
-}
-
-func Resolve[T any](injector *Injector) T {
-	t := reflect.TypeOf([0]T{}).Elem()
-	ctor, ok := getConstructor(injector, t)
-
-	// We have a constructor for the type, so this is a simple case
-	if ok {
-		return ctor.(func(i *Injector) T)(injector)
-	}
-
-	// if t is a struct, we need to resolve its fields and build the struct
-	if t.Kind() == reflect.Struct {
-		v := resolveStruct(injector, t)
-		return v.Interface().(T)
-	}
-
-	// if t is a pointer to a struct, we need to resolve its fields and build the struct
-	if t.Kind() == reflect.Pointer {
-		tt := t.Elem()
-		if tt.Kind() == reflect.Struct {
-			v := resolveStruct(injector, tt)
-			return v.Addr().Interface().(T)
-		}
-	}
-
-	// NOTE: We don't handle other types in our injector
-	panic(fmt.Sprintf("could not resolve type %s", t))
-}
-
-func NewInjector() *Injector {
-	return &Injector{
-		ctors: make(map[reflect.Type]any),
-	}
 }
