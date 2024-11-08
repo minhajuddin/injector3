@@ -35,7 +35,9 @@ func TestDefaultResolver(t *testing.T) {
 		return singleton
 	})
 
-	controller := injector3.Resolve[HomeController](i)
-	assert.Equal(t, controller.Master, singleton)
-	assert.Equal(t, controller.ReadReplica, singleton)
+	t.Run("Resolve a struct", func(t *testing.T) {
+		controller := injector3.Resolve[HomeController](i)
+		assert.Equal(t, singleton, controller.Master)
+		assert.Equal(t, singleton, controller.ReadReplica)
+	})
 }

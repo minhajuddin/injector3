@@ -21,10 +21,20 @@ func Register[T any](i *Injector, ctor func(*Injector) T) *Injector {
 	return i
 }
 
-func resolve(i *Injector, t reflect.Type) any {
-	ctor, ok := i.ctors[t]
+func resolve(injector *Injector, t reflect.Type) reflect.Value {
+	ctor, ok := injector.ctors[t]
 	if ok {
-		return ctor.(func(i *Injector) T)(i)
+		ctorFn := reflect.ValueOf(ctor)
+		return ctorFn.Call([]reflect.Value{reflect.ValueOf(injector)})[0]
+	}
+	panic("could not resolve inner type")
+}
+
+func Resolve[T any](injector *Injector) T {
+	t := reflect.TypeOf([0]T{}).Elem()
+	ctor, ok := injector.ctors[t]
+	if ok {
+		return ctor.(func(i *Injector) T)(injector)
 	}
 
 	// if t is a struct, we need to resolve its fields and build the struct
@@ -37,18 +47,13 @@ func resolve(i *Injector, t reflect.Type) any {
 			field := t.Field(i)
 			fieldType := field.Type
 			// resolve the field
-			fieldValue := resolve(i, fieldType)
+			fieldValue := resolve(injector, fieldType)
 			// set the field value
-			v.Field(i).Set(reflect.ValueOf(fieldValue))
+			v.Field(i).Set(fieldValue)
 		}
-		return v
-
+		return v.Interface().(T)
 	}
-	return nil
-}
-
-func Resolve[T any](i *Injector) T {
-	return resolve(i, reflect.TypeOf([0]T{}).Elem()).(T)
+	panic("could not resolve type")
 }
 
 func NewInjector() *Injector {
