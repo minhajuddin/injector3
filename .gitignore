@@ -1,1 +1,4 @@
-/bazel-*
+bazel-bin
+bazel-injector3
+bazel-out
+bazel-testlogs

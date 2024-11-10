@@ -3,6 +3,8 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 gazelle(name = "gazelle")
 
+# gazelle:prefix github.com/minhajuddin/injector3
+
 go_library(
     name = "injector3",
     srcs = ["injector3.go"],
@@ -15,6 +17,6 @@ go_test(
     srcs = ["injector3_test.go"],
     deps = [
         ":injector3",
-        "@com_github_stretchr_testify//assert:go_default_library",
+        "@com_github_stretchr_testify//assert",
     ],
 )
