@@ -24,3 +24,18 @@ gazelle(name = "gazelle")
 ```bash
 bazel run //:gazelle
 ```
+
+4. Run go mod tidy
+```bash
+go mod tidy
+```
+
+5. Run bazel mod tidy
+```bash
+bazel mod tidy
+```
+
+6. Run the tests
+```bash
+bazel test //... --test_output=all --flaky_test_attempts=3
+```
