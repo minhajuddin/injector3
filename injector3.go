@@ -97,6 +97,9 @@ func resolveStruct(injector *Injector, t reflect.Type) reflect.Value {
 	numFields := t.NumField()
 	for i := 0; i < numFields; i++ {
 		field := t.Field(i)
+		if !field.IsExported() {
+			continue
+		}
 		fieldType := field.Type
 		// resolve the field
 		fieldValue := resolve(injector, fieldType)
