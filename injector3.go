@@ -10,8 +10,10 @@ import (
 
 // Injector is a simple dependency injection container
 type Injector struct {
-	ctors map[reflect.Type]any
-	mu    sync.RWMutex
+	ctors   map[reflect.Type]any
+	cache   map[reflect.Type]reflect.Value
+	mu      sync.RWMutex
+	cacheMu sync.RWMutex
 }
 
 // NewInjector creates a new instance of the Injector
@@ -40,6 +42,10 @@ func Resolve[T any](injector *Injector) T {
 		return ctor.(func(i *Injector) T)(injector)
 	}
 
+	cachedCtor, ok := getCachedConstructor(injector, t)
+	if ok {
+		return cachedCtor.(func(i *Injector) T)(injector)
+	}
 	// if t is a struct, we need to resolve its fields and build the struct
 	if t.Kind() == reflect.Struct {
 		v := resolveStruct(injector, t)
@@ -63,6 +69,13 @@ func getConstructor(i *Injector, t reflect.Type) (any, bool) {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 	c, ok := i.ctors[t]
+	return c, ok
+}
+
+func getCachedConstructor(i *Injector, t reflect.Type) (any, bool) {
+	i.cacheMu.RLock()
+	defer i.cacheMu.RUnlock()
+	c, ok := i.cache[t]
 	return c, ok
 }
 

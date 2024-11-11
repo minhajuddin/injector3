@@ -37,6 +37,11 @@ type (
 	G struct {
 		Name AwesomeString
 	}
+
+	PrivateFieldsHomeController struct {
+		// readReplica DBConnectionPool
+		// awesome     AwesomeString
+	}
 )
 
 // Test the injector
@@ -77,5 +82,43 @@ func TestDefaultResolver(t *testing.T) {
 	t.Run("Deep nested struct", func(t *testing.T) {
 		a := injector3.Resolve[A](i)
 		assert.Equal(t, AwesomeString("awesome"), a.B.C.D.E.F.G.Name)
+	})
+
+	// t.Run("Drivate fields", func(t *testing.T) {
+	// 	a := injector3.Resolve[*PrivateFieldsHomeController](i)
+	// 	// assert.Equal(t, AwesomeString("awesome"), a.awesome)
+	// 	// assert.Equal(t, singleton, a.readReplica)
+	// })
+}
+
+const runCount = 100_000
+
+func BenchmarkCreatingStructs(b *testing.B) {
+	injector := injector3.NewInjector()
+	singleton := &DBConnectionPoolImpl{}
+
+	injector3.Register(injector, func(i *injector3.Injector) DBConnectionPool {
+		return singleton
+	})
+	injector3.Register(injector, func(i *injector3.Injector) AwesomeString {
+		return "awesome"
+	})
+
+	b.Run("Resolve a string", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = injector3.Resolve[AwesomeString](injector)
+		}
+	})
+
+	b.Run("Resolve a simple struct", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = injector3.Resolve[*HomeController](injector)
+		}
+	})
+
+	b.Run("Resolve a deeply nested struct", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = injector3.Resolve[*A](injector)
+		}
 	})
 }
